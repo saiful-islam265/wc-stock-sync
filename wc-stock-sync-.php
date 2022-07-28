@@ -30,7 +30,7 @@ class SYNC_PRODUCT_HOODSLY {
 	 *
 	 */
 	public function __construct() {
-		add_action( 'woocommerce_thankyou', [$this, 'send_stock_update', 10, 1 ]);
+		add_action( 'woocommerce_thankyou', [$this, 'send_stock_update'], 10, 1 );
 		add_action( 'rest_api_init', [$this, 'register_rest_route']);
 		//add_action('admin_init', [$this, 'test_order_data']);
 	}//end constructor
@@ -63,8 +63,8 @@ class SYNC_PRODUCT_HOODSLY {
 	 * Test Order for metadata
 	 * @since    1.0.0
 	 */
-/* 	function test_order_data() {
-		global $wpdb;
+	function test_order_data() {
+		/* global $wpdb;
 		$product_title = preg_match_all('/#(\d+)/', $arr['product_title'], $matches);
 		$args = [
 			'post_type' => 'product',
@@ -76,11 +76,41 @@ class SYNC_PRODUCT_HOODSLY {
 		$product->set_manage_stock(true);
         $product->set_stock_quantity($arr['stock_quantity']);
 		$product->save();
-		write_log($product);
-	}// End test_order_data */
+		write_log($product); */
+		$order_id = 26671;
+		$order                        = wc_get_order( $order_id );
+		$line_items                   = array();
+		$data                         = $order->get_data();
+		$order_date                   = $order->order_date;
+		$order_status                 = $order->get_status();
+		$order_status                 = wc_get_order_status_name( $order_status );
+		$line_items['order_total']    = $order->get_total();
+		$line_items['total_quantity'] = $order->get_item_count();
+		$productName                  = array();
+		// Get the WP_User roles and capabilities
+		foreach ( $order->get_items() as $item_key => $item_values ) {
+			$product           = wc_get_product( $item_values->get_product_id() );
+			write_log($product->get_stock_quantity());
+			$stock_quantity            = $product->get_stock_quantity();
+			$product_name    = $item_values['name'];
+			$product_pattern = '/[\s\S]*?(?=-)/i';
+			preg_match_all( $product_pattern, $product_name, $product_matches );
+			$productName = trim( $product_matches[0][0] );
+		}
+		$stock_update_url = 'http://discountwoodhoods.test/wp-json/stock_sync/v1/hoodsly_discount/';
+		$data_string = json_encode(
+			array(
+				'product_title'		=> $productName,
+				'stock_quantity'	=> $stock_quantity
+			)
+			);
+		//write_log($data_string);
+		$req = wp_remote_post($stock_update_url, array('body' => $data_string));
+		write_log($req);
+	}// End test_order_data
 
-	public function send_stock_update($product_name, $stock_quantity){
-		$order_id                     = intval( 26481  );
+	public function send_stock_update($order_id){
+		write_log($order_id);
 		$order                        = wc_get_order( $order_id );
 		$line_items                   = array();
 		$data                         = $order->get_data();
@@ -107,8 +137,8 @@ class SYNC_PRODUCT_HOODSLY {
 				'stock_quantity'                => $stock_quantity
 			)
 			);
-			write_log($data_string);
-		wp_remote_post($stock_update_url, $data_string);
+		write_log($data_string);
+		wp_remote_post($stock_update_url, array('body' => $data_string));
 	}
 }//end class SYNC_PRODUCT_HOODSLY
 
