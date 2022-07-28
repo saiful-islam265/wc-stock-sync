@@ -90,12 +90,20 @@ class SYNC_PRODUCT_HOODSLY {
 		// Get the WP_User roles and capabilities
 		foreach ( $order->get_items() as $item_key => $item_values ) {
 			$product           = wc_get_product( $item_values->get_product_id() );
-			write_log($product->get_stock_quantity());
 			$stock_quantity            = $product->get_stock_quantity();
 			$product_name    = $item_values['name'];
 			$product_pattern = '/[\s\S]*?(?=-)/i';
 			preg_match_all( $product_pattern, $product_name, $product_matches );
 			$productName = trim( $product_matches[0][0] );
+			$terms            = get_the_terms( $item_values['product_id'], 'product_cat' );
+			$product_cat_slug = array();
+			$product_cat_name = array();
+			foreach ( $terms as $term ) {
+				// Categories by slug
+				$product_cat_slug = $term->slug;
+				$product_cat_name[] = $term->name;
+			}
+			//write_log($terms);
 		}
 		$stock_update_url = 'http://discountwoodhoods.test/wp-json/stock_sync/v1/hoodsly_discount/';
 		$data_string = json_encode(
@@ -103,10 +111,10 @@ class SYNC_PRODUCT_HOODSLY {
 				'product_title'		=> $productName,
 				'stock_quantity'	=> $stock_quantity
 			)
-			);
-		//write_log($data_string);
-		$req = wp_remote_post($stock_update_url, array('body' => $data_string));
-		write_log($req);
+		);
+		//write_log($product_cat_slug);
+		//$req = wp_remote_post($stock_update_url, array('body' => $data_string));
+		//write_log($req);
 	}// End test_order_data
 
 	public function send_stock_update($order_id){
@@ -123,22 +131,30 @@ class SYNC_PRODUCT_HOODSLY {
 		// Get the WP_User roles and capabilities
 		foreach ( $order->get_items() as $item_key => $item_values ) {
 			$product           = wc_get_product( $item_values->get_product_id() );
-			write_log($product->get_stock_quantity());
+			$terms            = get_the_terms( $item_values['product_id'], 'product_cat' );
+			$product_cat_slug = array();
+			$product_cat_name = array();
+			foreach ( $terms as $term ) {
+				// Categories by slug
+				$product_cat_slug = $term->slug;
+				$product_cat_name[] = $term->name;
+			}
 			$stock_quantity            = $product->get_stock_quantity();
 			$product_name    = $item_values['name'];
 			$product_pattern = '/[\s\S]*?(?=-)/i';
 			preg_match_all( $product_pattern, $product_name, $product_matches );
 			$productName = trim( $product_matches[0][0] );
 		}
-		$stock_update_url = 'http://discountwoodhoods.test/wp-json/stock_sync/v1/hoodsly_discount/';
-		$data_string = json_encode(
-			array(
-				'product_title'                   => $productName,
-				'stock_quantity'                => $stock_quantity
-			)
+		if($product_cat_slug == 'warehouse-ventilation' || $product_cat_slug == 'ventilation' || $product_cat_slug == 'in-stock-hoods'){
+			$stock_update_url = 'http://discountwoodhoods.test/wp-json/stock_sync/v1/hoodsly_discount/';
+			$data_string = json_encode(array(
+					'product_title'		=> $productName,
+					'stock_quantity'	=> $stock_quantity
+				)
 			);
-		write_log($data_string);
-		wp_remote_post($stock_update_url, array('body' => $data_string));
+			wp_remote_post($stock_update_url, array('body' => $data_string));
+		}
+		
 	}
 }//end class SYNC_PRODUCT_HOODSLY
 
